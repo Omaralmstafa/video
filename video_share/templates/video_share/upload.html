@@ -1,0 +1,529 @@
+{% load static %}
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>رفع فيديو جديد</title>
+  <link href="{% static 'css/tailwind.css' %}" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .upload-container {
+      width: 100%;
+      max-width: 500px;
+      background: #fff;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #f0f0f0;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #262626;
+      transition: background 0.2s;
+      margin-left: 15px;
+    }
+
+    .back-btn:hover {
+      background: #e0e0e0;
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #262626;
+      font-weight: 700;
+    }
+
+    /* منطقة الرفع */
+    .upload-area {
+      border: 3px dashed #d1d5db;
+      border-radius: 16px;
+      padding: 50px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: #fafafa;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-area:hover,
+    .upload-area.dragover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .upload-area input[type=file] {
+      display: none;
+    }
+
+    .upload-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .upload-area h3 {
+      font-size: 18px;
+      color: #262626;
+      margin-bottom: 8px;
+    }
+
+    .upload-area p {
+      font-size: 14px;
+      color: #8e8e8e;
+    }
+
+    .file-types {
+      font-size: 12px;
+      color: #a0a0a0;
+      margin-top: 8px;
+    }
+
+    /* معاينة الفيديو */
+    .preview-container {
+      display: none;
+      margin-top: 20px;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      background: #000;
+    }
+
+    .preview-container.show {
+      display: block;
+    }
+
+    .preview-video {
+      width: 100%;
+      max-height: 400px;
+      display: block;
+    }
+
+    .preview-overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    .file-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-details {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .change-video {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border: none;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* زر الرفع */
+    .upload-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .upload-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .upload-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .upload-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* شريط التقدم */
+    .progress-container {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .progress-container.show {
+      display: block;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #262626;
+      font-weight: 600;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.3s;
+      border-radius: 4px;
+    }
+
+    /* الرسائل */
+    .message {
+      padding: 16px;
+      border-radius: 12px;
+      margin-top: 20px;
+      font-size: 14px;
+      display: none;
+      text-align: center;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+
+    .message.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    .message.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+
+    /* لودر */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* تجاوب */
+    @media (max-width: 480px) {
+      .upload-container {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .upload-area {
+        padding: 40px 15px;
+      }
+
+      .upload-icon {
+        font-size: 48px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="upload-container">
+    <div class="header">
+      <a href="{% url 'video_share:video_list' %}" class="back-btn">
+        ←
+      </a>
+      <h1>رفع فيديو جديد</h1>
+    </div>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+      <!-- ensure CSRF cookie is set for AJAX upload -->
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+      <!-- منطقة الرفع -->
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">🎬</div>
+        <h3>اسحب الفيديو هنا</h3>
+        <p>أو انقر للاختيار من جهازك</p>
+        <div class="file-types">MP4, WebM, MOV • حتى 500 ميجا</div>
+        <input type="file" id="videoFile" name="video" accept="video/*" required>
+      </div>
+
+      <!-- معاينة الفيديو -->
+      <div class="preview-container" id="previewContainer">
+        <video class="preview-video" id="previewVideo" controls muted></video>
+        <div class="preview-overlay" id="previewOverlay">
+          <div class="file-name" id="fileName"></div>
+          <div class="file-details" id="fileDetails"></div>
+        </div>
+        <button type="button" class="change-video" id="changeVideo">تغيير الفيديو</button>
+      </div>
+
+      <!-- زر الرفع -->
+      <button type="submit" class="upload-btn" id="uploadBtn">
+        <span id="btnText">رفع الفيديو</span>
+      </button>
+
+      <!-- شريط التقدم -->
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-label">
+          <span>جاري الرفع...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+        </div>
+      </div>
+
+      <!-- الرسائل -->
+      <div class="message" id="message"></div>
+    </form>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const videoFile = document.getElementById('videoFile');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const btnText = document.getElementById('btnText');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const progressPercent = document.getElementById('progressPercent');
+    const message = document.getElementById('message');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewVideo = document.getElementById('previewVideo');
+    const previewOverlay = document.getElementById('previewOverlay');
+    const fileName = document.getElementById('fileName');
+    const fileDetails = document.getElementById('fileDetails');
+    const changeVideo = document.getElementById('changeVideo');
+
+    let selectedFile = null;
+
+    // النقر على منطقة الرفع
+    uploadArea.addEventListener('click', () => videoFile.click());
+
+    // السحب والإفلات
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+
+    // اختيار الملف
+    videoFile.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+
+    // تغيير الفيديو
+    changeVideo.addEventListener('click', () => {
+      videoFile.click();
+    });
+
+    function handleFileSelect(file) {
+      // التحقق من نوع الملف
+      if (!file.type.startsWith('video/')) {
+        showMessage('الرجاء اختيار ملف فيديو', 'error');
+        return;
+      }
+
+      // التحقق من حجم الملف (500 MB)
+      const maxSize = 500 * 1024 * 1024;
+      if (file.size > maxSize) {
+        showMessage('حجم الملف يجب أن يكون أقل من 500 ميجا', 'error');
+        return;
+      }
+
+      selectedFile = file;
+
+      // عرض معلومات الملف
+      const size = (file.size / (1024 * 1024)).toFixed(2);
+      fileName.textContent = file.name;
+      fileDetails.textContent = `${size} ميجا • ${file.type.split('/')[1].toUpperCase()}`;
+
+      // معاينة الفيديو
+      const url = URL.createObjectURL(file);
+      previewVideo.src = url;
+      previewContainer.classList.add('show');
+      uploadArea.style.display = 'none';
+
+      // إخفاء أي رسائل سابقة
+      message.classList.remove('show');
+    }
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = `message ${type} show`;
+    }
+
+    // رفع الفيديو
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!selectedFile) {
+        showMessage('الرجاء اختيار ملف فيديو', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('video', selectedFile);
+
+      uploadBtn.disabled = true;
+      btnText.innerHTML = '<div class="spinner"></div>';
+      progressContainer.classList.add('show');
+      message.classList.remove('show');
+
+      try {
+        const xhr = new XMLHttpRequest();
+
+        // تتبع تقدم الرفع
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            progressBarFill.style.width = percent + '%';
+            progressPercent.textContent = percent + '%';
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            showMessage('✓ تم رفع الفيديو بنجاح!', 'success');
+            
+            setTimeout(() => {
+              window.location.href = '{% url "video_share:video_list" %}';
+            }, 1500);
+          } else {
+            showMessage('حدث خطأ أثناء الرفع', 'error');
+            resetUploadButton();
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          showMessage('حدث خطأ في الاتصال', 'error');
+          resetUploadButton();
+        });
+
+        // attach CSRF header for Django
+        function getCookie(name) {
+          const v = `; ${document.cookie}`;
+          const parts = v.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop().split(';').shift();
+          return '';
+        }
+        const csrftoken = getCookie('csrftoken');
+        xhr.open('POST', '{% url "video_share:upload_video" %}');
+        if (csrftoken) {
+          xhr.setRequestHeader('X-CSRFToken', csrftoken);
+        }
+        xhr.send(formData);
+
+      } catch (error) {
+        showMessage('حدث خطأ: ' + error.message, 'error');
+        resetUploadButton();
+      }
+    });
+
+    function resetUploadButton() {
+      uploadBtn.disabled = false;
+      btnText.textContent = 'رفع الفيديو';
+      progressContainer.classList.remove('show');
+    }
+  </script>
+</body>
+</html>

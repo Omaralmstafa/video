@@ -1,0 +1,7 @@
+/* Minimal CSS to provide base layout and avoid depending on Tailwind during development */
+html,body{height:100%;}
+body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#000;color:#fff}
+button,a{cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center}
+
+/* keep existing page-specific styles active; this file intentionally small */

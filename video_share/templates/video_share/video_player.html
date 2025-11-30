@@ -1,0 +1,1349 @@
+{% load static %}
+<!doctype html>
+<html lang="ar" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <title>عرض فيديو — ريلز</title>
+  <link href="{% static 'css/minimal.css' %}" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      touch-action: pan-y;
+    }
+
+    .reels-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .reels-container {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      will-change: transform;
+    }
+
+    .reel-item {
+      position: absolute;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .reel-item.active {
+      opacity: 1;
+    }
+
+    /* Responsive video sizing: fill the viewport on small devices, preserve aspect on large screens */
+    video {
+      width: 100%;
+      height: 100%;
+      max-height: 100vh;
+      max-width: 100%;
+      object-fit: cover; /* use cover to fill small screens without letterboxing */
+      background: #000;
+    }
+
+    /* On very wide viewports prefer contain to avoid cropping important content */
+    @media (min-width: 1200px) {
+      video {
+        object-fit: contain;
+      }
+    }
+
+    /* Ensure videos keep aspect ratio and don't overflow in landscape phones */
+    @media (max-height: 500px) {
+      video {
+        height: auto;
+        max-height: 100vh;
+      }
+    }
+
+    .video-loader {
+      position: absolute;
+      z-index: 5;
+      color: #fff;
+      background: rgba(0,0,0,0.6);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: none;
+    }
+
+    .reel-item.loading .video-loader {
+      display: block;
+    }
+
+    /* أزرار التفاعل الجانبية */
+    .actions-sidebar {
+      position: fixed;
+      left: 20px;
+      bottom: 120px; /* raised so it doesn't overlap bottom bar */
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 10;
+    }
+
+    .action-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: none;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* larger touch targets and visible focus */
+    .action-btn:focus {
+      outline: 3px solid rgba(255,255,255,0.18);
+      outline-offset: 2px;
+    }
+
+    .action-btn:active {
+      transform: scale(0.9);
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(1.05);
+    }
+
+    .action-count {
+      position: absolute;
+      bottom: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* معلومات الفيديو */
+    .video-info {
+      position: fixed;
+      right: 20px;
+      bottom: 80px;
+      left: 90px;
+      color: #fff;
+      z-index: 10;
+      text-align: right;
+    }
+
+    .video-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    }
+
+    .video-description {
+      font-size: 14px;
+      opacity: 0.9;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      max-height: 60px;
+      overflow: hidden;
+    }
+
+    /* شريط التقدم */
+    .progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      z-index: 11;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: #fff;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* زر التشغيل/الإيقاف */
+    .play-pause-overlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 12;
+    }
+
+    .play-pause-overlay.show {
+      opacity: 1;
+    }
+
+    /* هيدر */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);
+      z-index: 10;
+    }
+
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .menu-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* مؤشرات التمرير */
+    .scroll-indicator {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 24px;
+      z-index: 9;
+      pointer-events: none;
+      animation: bounce 1.5s infinite;
+    }
+
+    .scroll-indicator.top {
+      top: 70px;
+    }
+
+    .scroll-indicator.bottom {
+      bottom: 140px;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-5px); }
+    }
+
+    /* قائمة المشاركة */
+    .share-menu {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-radius: 20px 20px 0 0;
+      padding: 20px;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      z-index: 100;
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    .share-menu.active {
+      transform: translateY(0);
+    }
+
+    .share-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 99;
+    }
+
+    .share-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .share-menu h3 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 18px;
+      color: #000;
+    }
+
+    .share-options {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 15px;
+    }
+
+    .share-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
+
+    .share-option:active {
+      background: #f0f0f0;
+    }
+
+    .share-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #fff;
+    }
+
+    .share-icon.whatsapp { background: #25D366; }
+    .share-icon.telegram { background: #0088cc; }
+    .share-icon.copy { background: #666; }
+    .share-icon.download { background: #007AFF; }
+    .share-icon.native { background: #FF3B30; }
+
+    .share-label {
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+    }
+
+    /* تنبيه */
+    .toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 14px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    /* شريط تحميل التنزيل */
+    .download-progress {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.9);
+      padding: 15px 20px;
+      border-radius: 12px;
+      color: #fff;
+      min-width: 250px;
+      z-index: 1000;
+      display: none;
+    }
+
+    .download-progress.show {
+      display: block;
+    }
+
+    .download-progress-text {
+      font-size: 13px;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .download-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .download-progress-fill {
+      height: 100%;
+      background: #007AFF;
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    /* تجاوب مع الشاشات الصغيرة */
+    @media (max-width: 768px) {
+      .actions-sidebar {
+        left: 15px;
+        bottom: 100px; /* ensure spacing on small screens */
+        gap: 15px;
+      }
+
+      .action-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+      }
+
+      .video-info {
+        right: 15px;
+        bottom: 60px;
+        left: 80px;
+      }
+    }
+
+    /* Bottom persistent action bar */
+    .bottom-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: center;
+      padding: 8px 12px;
+      pointer-events: none;
+    }
+
+    .bottom-bar .bar-inner {
+      width: 100%;
+      max-width: 960px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.6));
+      border-radius: 12px;
+      padding: 8px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      pointer-events: all;
+    }
+
+    .btn {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .btn-add { font-size: 15px }
+    .btn-sound { font-size: 16px; padding: 6px 10px }
+
+    .bar-spacer { flex: 1 }
+
+    /* Bottom progress/duration bar */
+    .bottom-progress {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 62px;
+      z-index: 21;
+      max-width: 960px;
+      margin: 0 auto;
+      pointer-events: none;
+    }
+
+    .bottom-progress .track {
+      height: 6px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 6px;
+      overflow: hidden;
+      pointer-events: all;
+      cursor: pointer;
+    }
+
+    .bottom-progress .fill {
+      height: 100%;
+      background: #fff;
+      width: 0%;
+      transition: width 0.08s linear;
+    }
+
+    .bottom-progress .time {
+      margin-top: 6px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      text-align: right;
+      direction: ltr;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <form style="display:none">{% csrf_token %}</form>
+  <!-- شريط التقدم -->
+  <div class="progress-bar">
+    <div class="progress-bar-fill" id="progressBarFill"></div>
+  </div>
+
+  <!-- الهيدر -->
+  <div class="header">
+    <a href="{% url 'video_share:video_list' %}" class="back-btn">
+      ←
+    </a>
+    <button class="menu-btn" id="menuBtn">⋮</button>
+  </div>
+
+  <!-- مؤشرات التمرير -->
+  <div class="scroll-indicator top" id="scrollTop" style="display:none;">↑</div>
+  <div class="scroll-indicator bottom" id="scrollBottom" style="display:none;">↓</div>
+
+  <!-- حاوية الفيديوهات -->
+  <div class="reels-wrapper" id="reelsWrapper">
+    <div class="reels-container" id="reelsContainer">
+      {% for video in videos %}
+      <div class="reel-item {% if forloop.counter0 == current_index %}active{% endif %}" 
+           data-index="{{ forloop.counter0 }}"
+           data-url="{{ video.url }}"
+           data-title="{{ video.title }}"
+           data-filename="{{ video.filename }}">
+        <div class="video-loader" aria-hidden="true">جاري التحميل…</div>
+        <video muted autoplay playsinline webkit-playsinline preload="metadata" loop>
+          <source src="{{ video.url }}" type="video/mp4">
+        </video>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- رمز التشغيل/الإيقاف -->
+  <div class="play-pause-overlay" id="playPauseOverlay">▶</div>
+
+  <!-- معلومات الفيديو -->
+  <div class="video-info">
+    <div class="video-title" id="videoTitle">{{ videos.0.title }}</div>
+    <div class="video-description">اسحب للأعلى أو للأسفل للتنقل بين الفيديوهات</div>
+  </div>
+
+  <!-- أزرار التفاعل -->
+  <div class="actions-sidebar">
+    <button class="action-btn" id="likeBtn" title="إعجاب">
+      ♡
+      <span class="action-count" id="likeCount">0</span>
+    </button>
+    
+    <button class="action-btn" id="shareBtn" title="مشاركة">
+      ➤
+    </button>
+    
+    <button class="action-btn" id="downloadBtn" title="تحميل">
+      ⬇
+    </button>
+    
+    <button class="action-btn" id="soundBtn" title="تشغيل/إيقاف الصوت">
+      🔈
+    </button>
+  </div>
+
+  <!-- Bottom persistent action bar (Add video + small sound toggle) -->
+  <div class="bottom-bar" role="navigation" aria-label="actions-bottom">
+    <div class="bar-inner">
+        <a id="addVideoBtn" class="btn btn-add" href="{% url 'video_share:upload_video' %}" title="Add video">＋ Add Video</a>
+      <div class="bar-spacer"></div>
+      <button id="soundBtnBottom" class="btn btn-sound" title="Toggle Sound">🔈</button>
+    </div>
+  </div>
+
+  <!-- Bottom progress and duration -->
+  <div class="bottom-progress" id="bottomProgress">
+    <div class="track" id="bottomTrack">
+      <div class="fill" id="bottomProgressFill"></div>
+    </div>
+    <div class="time" id="bottomTime">0:00 / 0:00</div>
+  </div>
+
+  <!-- قائمة المشاركة -->
+  <div class="share-overlay" id="shareOverlay"></div>
+  <div class="share-menu" id="shareMenu">
+    <h3>مشاركة الفيديو</h3>
+    <div class="share-options">
+      <div class="share-option" id="whatsappShare">
+        <div class="share-icon whatsapp">📱</div>
+        <div class="share-label">واتساب</div>
+      </div>
+      
+      <div class="share-option" id="telegramShare">
+        <div class="share-icon telegram">✈️</div>
+        <div class="share-label">تيليجرام</div>
+      </div>
+      
+      <div class="share-option" id="copyLink">
+        <div class="share-icon copy">📋</div>
+        <div class="share-label">نسخ الرابط</div>
+      </div>
+      
+      <div class="share-option" id="nativeShare">
+        <div class="share-icon native">📤</div>
+        <div class="share-label">المزيد</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- التنبيهات -->
+  <div class="toast" id="toast"></div>
+
+  <!-- شريط تحميل التنزيل -->
+  <div class="download-progress" id="downloadProgress">
+    <div class="download-progress-text" id="downloadProgressText">جاري التحميل...</div>
+    <div class="download-progress-bar">
+      <div class="download-progress-fill" id="downloadProgressFill"></div>
+    </div>
+  </div>
+
+  <script>
+    // بيانات الفيديوهات
+    // `videos_json` is a JSON string produced by the view; keep `videos` (Python list) for the template loop
+    const videos = JSON.parse('{{ videos_json|escapejs }}');
+    let currentIndex = parseInt('{{ current_index }}' || '0', 10);
+
+    // Debug: Check if videos loaded correctly
+    console.log('🎬 Videos JSON parsed:', videos);
+    console.log('📌 Current index:', currentIndex);
+    console.log('📊 Number of videos:', videos.length);
+    
+    if (videos.length === 0) {
+      console.error('❌ No videos found in context!');
+    }
+
+    // العناصر (بعضها يعاد حسابه داخل init)
+    const reelsWrapper = document.getElementById('reelsWrapper');
+    const reelsContainer = document.getElementById('reelsContainer');
+    let reelItems = [];
+    const playPauseOverlay = document.getElementById('playPauseOverlay');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const bottomProgress = document.getElementById('bottomProgress');
+    const bottomProgressFill = document.getElementById('bottomProgressFill');
+    const bottomTime = document.getElementById('bottomTime');
+    const soundBtnBottom = document.getElementById('soundBtnBottom');
+    const addVideoBtn = document.getElementById('addVideoBtn');
+    const videoTitle = document.getElementById('videoTitle');
+    const scrollTop = document.getElementById('scrollTop');
+    const scrollBottom = document.getElementById('scrollBottom');
+    const shareMenu = document.getElementById('shareMenu');
+    const shareOverlay = document.getElementById('shareOverlay');
+    const shareBtn = document.getElementById('shareBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const likeBtn = document.getElementById('likeBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const toast = document.getElementById('toast');
+    const downloadProgress = document.getElementById('downloadProgress');
+    const downloadProgressFill = document.getElementById('downloadProgressFill');
+    const downloadProgressText = document.getElementById('downloadProgressText');
+    const videoDescriptionEl = document.querySelector('.video-description');
+
+    let touchStartY = 0;
+    let touchEndY = 0;
+    let isTransitioning = false;
+    let likes = {};
+
+    function formatTime(s) {
+      if (!isFinite(s)) return '0:00';
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60).toString().padStart(2, '0');
+      return `${m}:${sec}`;
+    }
+
+    // Debug logging
+    console.log('🎬 Video player script loaded');
+    console.log('📊 Videos available:', videos);
+    console.log('📌 Button elements:', {
+      likeBtn: likeBtn ? 'found' : 'missing',
+      shareBtn: shareBtn ? 'found' : 'missing',
+      downloadBtn: downloadBtn ? 'found' : 'missing',
+      menuBtn: menuBtn ? 'found' : 'missing'
+    });
+
+    // تهيئة الفيديو الحالي
+    function init() {
+      // احصل على العناصر المتغيرة بعد DOM
+      reelItems = Array.from(document.querySelectorAll('.reel-item'));
+
+      console.log('🔍 init() — DOM elements:', { reelsWrapper: !!reelsWrapper, reelsContainer: !!reelsContainer, reelItems: reelItems.length, videos: videos.length });
+
+      // تأكد من وجود فيديوهات
+      if (!videos || videos.length === 0) {
+        console.error('❌ No videos in JSON data');
+        showToast('لا توجد فيديوهات للعرض');
+        return;
+      }
+
+      // تأكد أن عناصر الفيديو موجودة في DOM
+      if (reelItems.length === 0) {
+        console.error('❌ No reel-item elements found in DOM');
+        showToast('خطأ في عرض الفيديوهات');
+        return;
+      }
+
+      // ضبط currentIndex داخل الحدود الصحيحة
+      if (isNaN(currentIndex) || currentIndex < 0) currentIndex = 0;
+      if (currentIndex >= videos.length) currentIndex = videos.length - 1;
+
+      // تأكد أن عناصر الفيديو صامتة للسماح بالتشغيل التلقائي
+      reelItems.forEach((item, idx) => {
+        const v = item.querySelector('video');
+        if (v) {
+          v.muted = true;
+          v.playsInline = true;
+          v.setAttribute('playsinline', '');
+          // محاولة تشغيل واذا فشل سنحاول ثانية
+          v.addEventListener('play', () => console.log(`▶ Video ${idx} started`));
+          v.addEventListener('error', (e) => console.error(`❌ Video ${idx} error`, e));
+        } else {
+          console.warn(`⚠️ reel-item ${idx} missing <video>`);
+        }
+      });
+
+      // تأكد أن هناك عنصر واحد على الأقل بعلامة active
+      if (!document.querySelector('.reel-item.active')) {
+        const first = reelItems[currentIndex];
+        if (first) first.classList.add('active');
+      }
+
+      updateVideoPosition();
+      playCurrentVideo();
+      updateScrollIndicators();
+
+      // ربط أحداث الوقت بعد التأكد من أن الفيديوهات موجودة
+      reelItems.forEach(item => {
+        const video = item.querySelector('video');
+        if (!video) return;
+          video.addEventListener('timeupdate', () => {
+            if (item.classList.contains('active')) {
+              const progress = (video.currentTime / (video.duration || 1)) * 100;
+              progressBarFill.style.width = progress + '%';
+              if (bottomProgressFill) bottomProgressFill.style.width = progress + '%';
+              if (bottomTime) bottomTime.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+            }
+          });
+      });
+
+      // إدارة حالة التحميل لكل فيديو (عرض مؤشرات التحميل، محاولة تشغيل عند الاستعداد)
+      reelItems.forEach((item, idx) => {
+        const video = item.querySelector('video');
+        if (!video) return;
+
+        // ضع علامة loading حتى يبدأ الفيديو
+        item.classList.add('loading');
+
+        const showReady = () => {
+          item.classList.remove('loading');
+          // إذا كان هذا هو الفيديو النشط حاول تشغيله
+          if (idx === currentIndex) {
+            video.play().catch(err => console.warn('Play prevented:', err));
+          }
+        };
+
+        video.addEventListener('canplay', showReady);
+        video.addEventListener('loadeddata', showReady);
+
+        // في حالة الانتظار أو الانقطاع، أعد إظهار المؤشر
+        video.addEventListener('waiting', () => item.classList.add('loading'));
+        video.addEventListener('stalled', () => item.classList.add('loading'));
+      });
+
+      // في حال لم يعمل التشغيل الأولي، حاول تشغيل الفيديو النشط بعد مهلة قصيرة
+      setTimeout(() => {
+        try {
+          const activeVideo = document.querySelector('.reel-item.active video');
+          if (activeVideo && activeVideo.paused) {
+            activeVideo.play().catch(err => console.warn('Retry play failed:', err));
+          }
+        } catch (err) {
+          console.error('Error retrying play:', err);
+        }
+      }, 300);
+
+      console.log('✅ Init completed. Reel items:', reelItems.length, 'currentIndex:', currentIndex);
+    }
+
+    // تحديث موضع الفيديو
+    function updateVideoPosition() {
+      reelItems.forEach((item, index) => {
+        item.style.top = `${index * 100}vh`;
+        if (index === currentIndex) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+      
+      reelsContainer.style.transform = `translateY(-${currentIndex * 100}vh)`;
+      
+      // تحديث العنوان والوصف
+      if (videos[currentIndex]) {
+        videoTitle.textContent = videos[currentIndex].title || 'فيديو رائع';
+        if (videoDescriptionEl) {
+          videoDescriptionEl.textContent = videos[currentIndex].description || 'اسحب للأعلى أو للأسفل للتنقل بين الفيديوهات';
+        }
+      }
+
+      // تحديث حالة الإعجاب
+      updateLikeButton();
+    }
+
+    // تشغيل الفيديو الحالي
+    function playCurrentVideo() {
+      reelItems.forEach((item, index) => {
+        const video = item.querySelector('video');
+        if (index === currentIndex) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+          video.currentTime = 0;
+        }
+      });
+    }
+
+    // bottom progress click-to-seek
+    if (bottomProgress && bottomProgress.querySelector('.track')) {
+      const track = document.getElementById('bottomTrack');
+      track.addEventListener('click', (e) => {
+        const rect = track.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const pct = Math.max(0, Math.min(1, x / rect.width));
+        const activeVideo = document.querySelector('.reel-item.active video');
+        if (activeVideo && activeVideo.duration) {
+          activeVideo.currentTime = activeVideo.duration * pct;
+        }
+      });
+    }
+
+    // bottom sound toggle mirrors main sound button
+    if (soundBtnBottom) {
+      soundBtnBottom.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // toggle same as top soundBtn
+        const activeVideo = document.querySelector('.reel-item.active video');
+        if (!activeVideo) return;
+        activeVideo.muted = !activeVideo.muted;
+        if (activeVideo.muted) {
+          if (soundBtn) soundBtn.textContent = '🔈';
+          soundBtnBottom.textContent = '🔈';
+        } else {
+          if (soundBtn) soundBtn.textContent = '🔊';
+          soundBtnBottom.textContent = '🔊';
+          activeVideo.play().catch(() => {});
+        }
+      });
+    }
+
+    // Hide bottom progress if no active video or duration unknown
+    function refreshBottomProgressVisibility() {
+      const activeVideo = document.querySelector('.reel-item.active video');
+      if (!activeVideo || !isFinite(activeVideo.duration) || activeVideo.duration === 0) {
+        if (bottomProgress) bottomProgress.style.display = 'none';
+      } else {
+        if (bottomProgress) bottomProgress.style.display = 'block';
+      }
+    }
+
+    // initial refresh (after init)
+    setTimeout(() => {
+      try {
+        const activeVideo = document.querySelector('.reel-item.active video');
+        if (activeVideo) {
+          if (bottomProgressFill) bottomProgressFill.style.width = '0%';
+          if (bottomTime) bottomTime.textContent = `0:00 / ${formatTime(activeVideo.duration || 0)}`;
+        }
+      } catch (e) { }
+      refreshBottomProgressVisibility();
+    }, 400);
+
+    // الانتقال للفيديو التالي أو السابق
+    function goToVideo(direction) {
+      if (isTransitioning) return;
+
+      const newIndex = currentIndex + direction;
+      
+      if (newIndex < 0 || newIndex >= videos.length) {
+        return; // لا يوجد المزيد من الفيديوهات
+      }
+
+      isTransitioning = true;
+      currentIndex = newIndex;
+      
+      updateVideoPosition();
+      playCurrentVideo();
+      updateScrollIndicators();
+
+      setTimeout(() => {
+        isTransitioning = false;
+      }, 300);
+    }
+
+    // تحديث مؤشرات التمرير
+    function updateScrollIndicators() {
+      scrollTop.style.display = currentIndex > 0 ? 'block' : 'none';
+      scrollBottom.style.display = currentIndex < videos.length - 1 ? 'block' : 'none';
+    }
+
+    // معالجة اللمس (Swipe)
+    reelsWrapper.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+    });
+
+    reelsWrapper.addEventListener('touchmove', (e) => {
+      // منع السحب الافتراضي للصفحة
+      if (Math.abs(e.touches[0].clientY - touchStartY) > 5) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    reelsWrapper.addEventListener('touchend', (e) => {
+      touchEndY = e.changedTouches[0].clientY;
+      handleSwipe();
+    });
+
+    function handleSwipe() {
+      const swipeDistance = touchStartY - touchEndY;
+      const minSwipeDistance = 50;
+
+      if (Math.abs(swipeDistance) > minSwipeDistance) {
+        if (swipeDistance > 0) {
+          // سحب لأعلى - الفيديو التالي
+          goToVideo(1);
+        } else {
+          // سحب لأسفل - الفيديو السابق
+          goToVideo(-1);
+        }
+      }
+    }
+
+    // معالجة عجلة الماوس (للحواسيب)
+    let wheelTimeout;
+    reelsWrapper.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      
+      clearTimeout(wheelTimeout);
+      wheelTimeout = setTimeout(() => {
+        if (e.deltaY > 0) {
+          goToVideo(1);
+        } else {
+          goToVideo(-1);
+        }
+      }, 100);
+    }, { passive: false });
+
+    // معالجة أزرار لوحة المفاتيح
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        goToVideo(1);
+      } else if (e.key === 'ArrowUp') {
+        goToVideo(-1);
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        togglePlayPause();
+      }
+    });
+
+    // التحكم بالتشغيل/الإيقاف عند النقر
+    reelsWrapper.addEventListener('click', (e) => {
+      if (e.target.tagName === 'VIDEO' || e.target === reelsWrapper) {
+        togglePlayPause();
+      }
+    });
+
+    function togglePlayPause() {
+      const currentVideo = reelItems[currentIndex].querySelector('video');
+      if (currentVideo.paused) {
+        currentVideo.play();
+        showPlayPauseIcon('▶');
+      } else {
+        currentVideo.pause();
+        showPlayPauseIcon('⏸');
+      }
+    }
+
+    function showPlayPauseIcon(icon) {
+      playPauseOverlay.textContent = icon;
+      playPauseOverlay.classList.add('show');
+      setTimeout(() => {
+        playPauseOverlay.classList.remove('show');
+      }, 500);
+    }
+
+
+
+    // زر الإعجاب
+    function updateLikeButton() {
+      // Show actual likes from database
+      const likeCount = videos[currentIndex].likes || 0;
+      if (likeCount > 0) {
+        likeBtn.innerHTML = '♥<span class="action-count">' + likeCount + '</span>';
+        likeBtn.style.color = '#FF3B30';
+      } else {
+        likeBtn.innerHTML = '♡<span class="action-count">0</span>';
+        likeBtn.style.color = '#fff';
+      }
+    }
+
+    likeBtn.addEventListener('click', async () => {
+      console.log('❤️ Like button clicked');
+      const videoId = videos[currentIndex].id;
+      console.log('📌 Liking video ID:', videoId);
+      
+      try {
+        const csrftoken = getCookie('csrftoken');
+        const response = await fetch(`/api/like/${videoId}/`, { method: 'POST', headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' } });
+        const data = await response.json();
+        
+        if (data.success) {
+          showToast('تم الإعجاب ❤️');
+          // Update local likes count
+          videos[currentIndex].likes = data.likes || (videos[currentIndex].likes + 1);
+          updateLikeButton();
+        } else {
+          showToast('فشل الإعجاب ✗');
+        }
+      } catch (e) {
+        console.error('❌ Like error:', e);
+        showToast('حدث خطأ في الإعجاب');
+      }
+    });
+
+    // Add touch support for buttons
+    likeBtn.addEventListener('touchstart', (e) => {
+      console.log('❤️ Like button touched');
+      e.preventDefault();
+      likeBtn.style.transform = 'scale(0.9)';
+    });
+
+    likeBtn.addEventListener('touchend', async (e) => {
+      console.log('❤️ Like button touch ended');
+      e.preventDefault();
+      likeBtn.style.transform = 'scale(1)';
+      
+      const videoId = videos[currentIndex].id;
+      console.log('📌 Liking video ID (touch):', videoId);
+      
+      try {
+        const csrftoken = getCookie('csrftoken');
+        const response = await fetch(`/api/like/${videoId}/`, { method: 'POST', headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' } });
+        const data = await response.json();
+        
+        if (data.success) {
+          showToast('تم الإعجاب ❤️');
+          // Update local likes count
+          videos[currentIndex].likes = data.likes || (videos[currentIndex].likes + 1);
+          updateLikeButton();
+        } else {
+          showToast('فشل الإعجاب ✗');
+        }
+      } catch (e) {
+        console.error('❌ Like error (touch):', e);
+        showToast('حدث خطأ في الإعجاب');
+      }
+    });
+
+    // Toggle sound (unmute/mute) for active video
+    async function toggleSound() {
+      const activeVideo = document.querySelector('.reel-item.active video');
+      if (!activeVideo) return;
+
+      try {
+        activeVideo.muted = !activeVideo.muted;
+        // update button icon
+        if (activeVideo.muted) {
+          if (soundBtn) soundBtn.textContent = '🔈';
+        } else {
+          if (soundBtn) soundBtn.textContent = '🔊';
+          // try to play with sound
+          await activeVideo.play().catch(() => {});
+        }
+      } catch (e) {
+        console.error('Sound toggle error', e);
+      }
+    }
+
+    if (soundBtn) {
+      soundBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSound();
+      });
+      soundBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSound();
+      });
+    }
+
+    // CSRF helper
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return '';
+    }
+
+    // فتح قائمة المشاركة
+    if (shareBtn) {
+      shareBtn.addEventListener('click', openShareMenu);
+      shareBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        openShareMenu();
+      });
+    }
+    if (menuBtn) {
+      menuBtn.addEventListener('click', openShareMenu);
+      menuBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        openShareMenu();
+      });
+    }
+
+    function openShareMenu() {
+      console.log('🔗 Share menu opening');
+      shareMenu.classList.add('active');
+      shareOverlay.classList.add('active');
+    }
+
+    shareOverlay.addEventListener('click', closeShareMenu);
+
+    function closeShareMenu() {
+      shareMenu.classList.remove('active');
+      shareOverlay.classList.remove('active');
+    }
+
+    // مشاركة واتساب
+    const whatsappShareEl = document.getElementById('whatsappShare');
+    if (whatsappShareEl) {
+      const handleWhatsAppShare = () => {
+        const videoUrl = videos[currentIndex].url;
+        const text = encodeURIComponent('شاهد هذا الفيديو الرائع! ');
+        const url = encodeURIComponent(window.location.origin + videoUrl);
+        window.open(`https://wa.me/?text=${text}${url}`, '_blank');
+        closeShareMenu();
+      };
+      whatsappShareEl.addEventListener('click', handleWhatsAppShare);
+      whatsappShareEl.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleWhatsAppShare();
+      });
+    }
+
+    // مشاركة تيليجرام
+    const telegramShareEl = document.getElementById('telegramShare');
+    if (telegramShareEl) {
+      const handleTelegramShare = () => {
+        const videoUrl = videos[currentIndex].url;
+        const url = encodeURIComponent(window.location.origin + videoUrl);
+        const text = encodeURIComponent('شاهد هذا الفيديو');
+        window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
+        closeShareMenu();
+      };
+      telegramShareEl.addEventListener('click', handleTelegramShare);
+      telegramShareEl.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleTelegramShare();
+      });
+    }
+
+    // نسخ الرابط
+    const copyLinkEl = document.getElementById('copyLink');
+    if (copyLinkEl) {
+      const handleCopyLink = async () => {
+        const videoUrl = videos[currentIndex].url;
+        try {
+          await navigator.clipboard.writeText(window.location.origin + videoUrl);
+          showToast('تم نسخ الرابط 📋');
+          closeShareMenu();
+        } catch (e) {
+          showToast('فشل نسخ الرابط');
+        }
+      };
+      copyLinkEl.addEventListener('click', handleCopyLink);
+      copyLinkEl.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleCopyLink();
+      });
+    }
+
+    // المشاركة الأصلية
+    const nativeShareEl = document.getElementById('nativeShare');
+    if (nativeShareEl) {
+      const handleNativeShare = async () => {
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: videos[currentIndex].title,
+              url: window.location.origin + videos[currentIndex].url
+            });
+            closeShareMenu();
+          } catch (e) {
+            if (e.name !== 'AbortError') {
+              showToast('تم إلغاء المشاركة');
+            }
+          }
+        } else {
+          showToast('ميزة المشاركة غير مدعومة');
+        }
+      };
+      nativeShareEl.addEventListener('click', handleNativeShare);
+      nativeShareEl.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleNativeShare();
+      });
+    }
+
+    // تحميل الفيديو
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', downloadVideo);
+      downloadBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        downloadVideo();
+      });
+    }
+
+    async function downloadVideo() {
+      console.log('⬇️ Download started for:', videos[currentIndex].title);
+      const videoUrl = videos[currentIndex].url;
+      const videoFilename = videos[currentIndex].filename;
+
+      downloadProgress.classList.add('show');
+      downloadProgressFill.style.width = '0%';
+      downloadProgressText.textContent = 'جاري التحميل... 0%';
+
+      try {
+        const response = await fetch(videoUrl);
+        const contentLength = response.headers.get('Content-Length');
+        
+        if (!response.body) {
+          const blob = await response.blob();
+          triggerDownload(blob, videoFilename);
+          downloadProgress.classList.remove('show');
+          showToast('اكتمل التحميل ✓');
+          return;
+        }
+
+        const total = parseInt(contentLength, 10);
+        const reader = response.body.getReader();
+        const chunks = [];
+        let received = 0;
+
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          
+          chunks.push(value);
+          received += value.length;
+          
+          const percent = Math.round((received / total) * 100);
+          downloadProgressFill.style.width = percent + '%';
+          downloadProgressText.textContent = `جاري التحميل... ${percent}%`;
+        }
+
+        const blob = new Blob(chunks);
+        triggerDownload(blob, videoFilename);
+        
+        downloadProgress.classList.remove('show');
+        showToast('اكتمل التحميل ✓');
+      } catch (err) {
+        console.error(err);
+        downloadProgress.classList.remove('show');
+        showToast('فشل التحميل ✗');
+      }
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // منع التمرير على الصفحة
+    document.body.style.overflow = 'hidden';
+
+    // تهيئة التطبيق
+    console.log('🚀 Starting app initialization...');
+    init();
+    console.log('✨ App fully initialized');
+  </script>
+
+</body>
+</html>

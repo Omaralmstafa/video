@@ -1,0 +1,1 @@
+web: gunicorn video_project.wsgi --log-file -

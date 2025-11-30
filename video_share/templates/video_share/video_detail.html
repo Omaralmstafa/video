@@ -1,0 +1,341 @@
+{% load static %}
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ video.title }} - ريلز</title>
+  <link href="{% static 'css/minimal.css' %}" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #fafafa;
+    }
+
+    .header {
+      background: #fff;
+      border-bottom: 1px solid #dbdbdb;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #262626;
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #0095f6;
+      text-decoration: none;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+
+    .video-player {
+      width: 100%;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      max-height: 80vh;
+      max-width: 100%;
+      object-fit: contain;
+      display: block;
+      background: #000;
+    }
+
+    @media (max-width: 768px) {
+      video { object-fit: cover; max-height: 100vh }
+    }
+
+    .video-details {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .video-title {
+      font-size: 22px;
+      font-weight: 600;
+      color: #262626;
+      margin-bottom: 12px;
+      word-break: break-word;
+    }
+
+    .video-meta {
+      display: flex;
+      gap: 20px;
+      color: #65676b;
+      font-size: 14px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .video-description {
+      color: #262626;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1px solid #dbdbdb;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #262626;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      background: #f0f0f0;
+    }
+
+    .action-btn.primary {
+      background: #0095f6;
+      color: #fff;
+      border-color: #0095f6;
+    }
+
+    .action-btn.primary:hover {
+      background: #0081d4;
+    }
+
+    /* Accessibility: visible focus for keyboard users */
+    .action-btn:focus, .back-btn:focus, .action-btn.primary:focus {
+      outline: 3px solid rgba(0,149,246,0.35);
+      outline-offset: 2px;
+    }
+
+    /* Increase tap targets on mobile */
+    @media (max-width: 480px) {
+      .action-btn { padding: 12px 18px; font-size: 16px }
+    }
+
+    /* Bottom bar and progress (consistent with reels page) */
+    .bottom-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      display: flex;
+      justify-content: center;
+      padding: 8px 12px;
+      pointer-events: none;
+    }
+
+    .bottom-bar .bar-inner {
+      width: 100%;
+      max-width: 960px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.6));
+      border-radius: 12px;
+      padding: 8px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      pointer-events: all;
+    }
+
+    .btn { background: rgba(0,0,0,0.05); color: #262626 }
+
+    .bottom-progress { position: fixed; left: 12px; right: 12px; bottom: 62px; max-width: 960px; margin: 0 auto; z-index: 41 }
+    .bottom-progress .track { height: 6px; background: rgba(0,0,0,0.06); border-radius: 6px; overflow: hidden; cursor: pointer }
+    .bottom-progress .fill { height: 100%; background: #0095f6; width: 0% }
+    .bottom-progress .time { margin-top: 6px; font-size: 12px; color: #444; text-align: right; direction: ltr }
+
+    .error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px;
+    }
+  </style>
+</head>
+<body>
+  <form style="display:none">{% csrf_token %}</form>
+  <div class="header">
+    <a href="{% url 'video_share:video_list' %}" class="back-btn">←</a>
+    <h1>{{ video.title }}</h1>
+    <div style="width: 40px;"></div>
+  </div>
+
+  {% if video %}
+  <div class="container">
+    <div class="video-player">
+      <video controls preload="metadata" playsinline>
+        <source src="{% url 'video_share:stream_video' video.id %}" type="video/mp4">
+        متصفحك لا يدعم تشغيل الفيديو
+      </video>
+    </div>
+
+    <div class="video-details">
+      <h2 class="video-title">{{ video.title }}</h2>
+      
+      <div class="video-meta">
+        <div class="meta-item">
+          <span>👁️</span>
+          <span>{{ video.views }} مشاهدة</span>
+        </div>
+        <div class="meta-item">
+          <span>❤️</span>
+          <span>{{ video.likes }} إعجاب</span>
+        </div>
+        <div class="meta-item">
+          <span>📅</span>
+          <span>{{ video.uploaded_at|date:"d M Y" }}</span>
+        </div>
+      </div>
+
+      {% if video.description %}
+      <div class="video-description">{{ video.description }}</div>
+      {% endif %}
+
+        <div class="actions">
+          <button class="action-btn" id="detailLikeBtn" data-id="{{ video.id }}" aria-label="إعجاب">❤️ إعجاب</button>
+          <a href="{% url 'video_share:stream_video' video.id %}?download=true" class="action-btn primary" id="detailDownloadBtn" aria-label="تحميل">⬇️ تحميل</a>
+        </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="error">
+    ❌ الفيديو غير موجود
+  </div>
+  {% endif %}
+
+  <!-- Bottom bar + progress for detail page -->
+  <div class="bottom-bar" role="navigation" aria-label="actions-bottom-detail">
+    <div class="bar-inner">
+      <a id="addVideoBtnDetail" class="btn" href="{% url 'video_share:upload_video' %}">＋ Add Video</a>
+      <div style="flex:1"></div>
+      <button id="soundBtnDetail" class="btn" aria-label="Toggle sound">🔈</button>
+    </div>
+  </div>
+
+  <div class="bottom-progress" id="bottomProgressDetail">
+    <div class="track" id="bottomTrackDetail"><div class="fill" id="bottomProgressFillDetail"></div></div>
+    <div class="time" id="bottomTimeDetail">0:00 / 0:00</div>
+  </div>
+
+  <script>
+    // Like handler using fetch; no inline onclick to avoid quoting issues
+    document.addEventListener('DOMContentLoaded', () => {
+      const likeBtn = document.getElementById('detailLikeBtn');
+      const videoEl = document.querySelector('.video-player video');
+      const bottomTrack = document.getElementById('bottomTrackDetail');
+      const bottomFill = document.getElementById('bottomProgressFillDetail');
+      const bottomTime = document.getElementById('bottomTimeDetail');
+      const soundBtn = document.getElementById('soundBtnDetail');
+
+      function formatTime(s) {
+        if (!isFinite(s)) return '0:00';
+        const m = Math.floor(s/60);
+        const sec = Math.floor(s%60).toString().padStart(2,'0');
+        return `${m}:${sec}`;
+      }
+
+      if (likeBtn) {
+        likeBtn.addEventListener('click', async () => {
+          const id = likeBtn.dataset.id;
+          try {
+            const csrftoken = (function(name){ const v = `; ${document.cookie}`; const p = v.split(`; ${name}=`); return p.length===2? p.pop().split(';').shift() : ''; })('csrftoken');
+            const res = await fetch(`/api/like/${id}/`, { method: 'POST', headers: { 'X-CSRFToken': csrftoken, 'Content-Type': 'application/json' } });
+            const data = await res.json();
+            if (data.success) {
+              alert('تم الإعجاب! ❤️');
+              const likesEl = document.querySelector('.meta-item span + span');
+              if (likesEl) likesEl.textContent = `${data.likes} إعجاب`;
+            } else {
+              alert('فشل الإعجاب');
+            }
+          } catch (e) { alert('حدث خطأ: ' + e) }
+        });
+      }
+
+      // update bottom progress as video plays
+      if (videoEl) {
+        videoEl.addEventListener('timeupdate', () => {
+          const pct = (videoEl.currentTime / (videoEl.duration || 1)) * 100;
+          if (bottomFill) bottomFill.style.width = pct + '%';
+          if (bottomTime) bottomTime.textContent = `${formatTime(videoEl.currentTime)} / ${formatTime(videoEl.duration)} `;
+        });
+
+        // click-to-seek
+        if (bottomTrack) {
+          bottomTrack.addEventListener('click', (e) => {
+            const rect = bottomTrack.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const pct = Math.max(0, Math.min(1, x / rect.width));
+            if (videoEl.duration) videoEl.currentTime = videoEl.duration * pct;
+          });
+        }
+      }
+
+      if (soundBtn && videoEl) {
+        soundBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          videoEl.muted = !videoEl.muted;
+          soundBtn.textContent = videoEl.muted ? '🔈' : '🔊';
+          if (!videoEl.muted) videoEl.play().catch(()=>{});
+        });
+      }
+
+      // initial visibility
+      setTimeout(()=>{
+        try {
+          if (videoEl && isFinite(videoEl.duration) && videoEl.duration > 0) {
+            document.getElementById('bottomProgressDetail').style.display = 'block';
+          } else {
+            document.getElementById('bottomProgressDetail').style.display = 'none';
+          }
+        } catch(e){}
+      }, 300);
+    });
+  </script>
+</body>
+</html>
