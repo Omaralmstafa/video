@@ -1,236 +1,267 @@
-# 🎬 مشروع مشاركة الفيديوهات - الريلز
+# Video Share - Django Reels App
 
-مشروع Django لمشاركة ومشاهدة الفيديوهات بتصميم Reels (Instagram/TikTok)
+A modern, mobile-first video sharing platform built with **Django**, featuring TikTok/Instagram Reels-style interface.
 
-## ✨ المميزات
+![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+![Django](https://img.shields.io/badge/Django-5.0-darkgreen)
 
-- 📱 تصميم Reels متجاوب بالكامل
-- ⬆️⬇️ التقليب بين الفيديوهات (Swipe)
-- 📤 رفع الفيديوهات بسهولة
-- 💬 مشاركة عبر واتساب وتيليجرام
-- ⬇️ تحميل الفيديوهات مع شريط تقدم
-- ❤️ نظام الإعجاب
-- 🎯 تشغيل تلقائي
+---
 
-## 🚀 التثبيت والتشغيل
 
-### 1. استنساخ المشروع
-\\`\\`\\`bash
-git clone <repository-url>
-cd video_reels_project
-\\`\\`\\`
+---
 
-### 2. إنشاء بيئة افتراضية
-\\`\\`\\`bash
+## Quick Start
+
+### Local Development
+
+```bash
+# 1. Clone and setup
+git clone <repo-url>
+cd video_project
 python -m venv venv
-source venv/bin/activate  # Mac/Linux
-venv\\Scripts\\activate     # Windows
-\\`\\`\\`
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Mac/Linux
 
-### 3. تثبيت المكتبات
-\\`\\`\\`bash
+# 2. Install dependencies
 pip install -r requirements.txt
-\\`\\`\\`
 
-### 4. إنشاء المجلدات
-\\`\\`\\`bash
-mkdir -p media/videos
-mkdir -p staticfiles
-\\`\\`\\`
-
-### 5. تطبيق الهجرات
-\\`\\`\\`bash
-python manage.py migrate
-\\`\\`\\`
-
-### 6. إنشاء مستخدم admin (اختياري)
-\\`\\`\\`bash
-python manage.py createsuperuser
-\\`\\`\\`
-
-### 7. تشغيل السيرفر
-\\`\\`\\`bash
-python manage.py runserver
-\\`\\`\\`
-
-### 8. فتح المتصفح
-\\`\\`\\`
-http://127.0.0.1:8000
-\\`\\`\\`
-
-## 📱 الاستخدام
-
-1. **رفع فيديو**: اضغط على زر "رفع فيديو"
-2. **مشاهدة الريلز**: اختر فيديو من القائمة
-3. **التقليب**: اسحب لأعلى/أسفل للتنقل
-4. **التفاعل**: إعجاب، مشاركة، تحميل
-
-## 🌐 النشر على السيرفر
-
-### Railway
-\\`\\`\\`bash
-railway login
-railway init
-railway up
-\\`\\`\\`
-
-### Render
-1. ارفع المشروع على GitHub
-2. اربط Render بالمستودع
-3. اختر "Web Service"
-4. ضع أوامر البناء من `build.sh`
-
-## 📦 التقنيات المستخدمة
-
-- Django 5.0
-- HTML5 + CSS3
-- JavaScript (Vanilla)
-- Whitenoise
-- Gunicorn
-
-## 📄 الترخيص
-
-MIT License
-
-## 👨‍💻 المطور
-
-تم التطوير بواسطة Claude + أنت 🚀
-\\`\\`\\`
-
----
-
-### 1️⃣7️⃣ إنشاء مجلد Templates
-```bash
-mkdir -p video_share/templates/video_share
-```
-
-ضع الملفات التالية في هذا المجلد:
-- `video_list.html`
-- `video_player.html`
-- `upload.html`
-
-*(استخدم الملفات التي تم إنشاؤها سابقاً)*
-
----
-
-### 1️⃣8️⃣ إنشاء مجلد Media
-```bash
-mkdir -p media/videos
-```
-
----
-
-## 🚀 أوامر التشغيل السريعة
-```bash
-# 1. إنشاء المشروع
-django-admin startproject video_project .
-python manage.py startapp video_share
-
-# 2. تطبيق التعديلات
-python manage.py makemigrations
+# 3. Run migrations
 python manage.py migrate
 
-# 3. جمع الملفات الثابتة
-python manage.py collectstatic --noinput
+# 4. Create admin user
+python manage.py createsuperuser
 
-# 4. تشغيل السيرفر
+# 5. Run server
+python manage.py runserver
+```
+
+Visit: http://127.0.0.1:8000
+
+---
+
+## Deployment
+
+### ⭐ Recommended: Render
+
+1. Push to GitHub
+2. Go to [Render.com](https://render.com)
+3. Create Web Service → Connect repo
+4. Build: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
+5. Start: `gunicorn video_project.wsgi:application`
+6. Add Postgres database
+7. Deploy!
+
+**See DEPLOYMENT_GUIDE.md for complete instructions.**
+
+---
+
+## Documentation
+
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** ⭐ Start here!
+- **[QUICK_START.md](QUICK_START.md)** - Quick reference
+- **[PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)** - Pre-deploy checklist
+- **[COMMANDS.md](COMMANDS.md)** - Command reference
+
+---
+
+## Project Structure
+
+```
+video_project/
+├── video_share/          # Main app
+│   ├── models.py         # Video database model
+│   ├── views.py          # API & views
+│   ├── urls.py           # URL routing
+│   └── templates/
+│       ├── video_player.html  # Main reels interface
+│       ├── video_detail.html
+│       └── upload.html
+├── video_project/        # Django settings
+│   ├── settings.py       # Development
+│   └── settings_prod.py  # Production
+├── static/               # CSS, JS
+├── media/                # User uploads
+├── requirements.txt      # Dependencies
+├── Dockerfile            # Docker setup
+└── docker-compose.yml    # Multi-container
+```
+
+---
+
+## Key Features Implemented
+
+✅ Video upload with validation  
+✅ Database-backed Video model  
+✅ Reels-style player interface  
+✅ Like/view tracking  
+✅ Responsive mobile design  
+✅ CSRF protection  
+✅ Static file optimization  
+✅ Production settings (Postgres, HTTPS)  
+✅ Docker containerization  
+✅ Multi-platform deployment docs  
+
+---
+
+## Environment Variables
+
+Create `.env` file:
+
+```bash
+DEBUG=False
+SECRET_KEY=your-long-random-key
+ALLOWED_HOSTS=yourdomain.com
+DATABASE_URL=postgresql://user:pass@host:5432/db
+```
+
+---
+
+## API Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/` | Home |
+| GET | `/reels/` | Video list |
+| GET | `/video/<id>/` | Single video |
+| POST | `/api/like/<id>/` | Like video |
+| POST | `/upload/` | Upload video |
+| GET | `/stream/<id>/` | Stream video |
+
+---
+
+## Technology Stack
+
+- **Backend:** Django 5.0
+- **Database:** SQLite (dev) / PostgreSQL (prod)
+- **Frontend:** HTML5, CSS3, Vanilla JavaScript
+- **Server:** Gunicorn / Waitress
+- **Static:** WhiteNoise
+- **Container:** Docker & Docker Compose
+
+---
+
+## Running Locally
+
+```bash
+# Development server
 python manage.py runserver
 
-# 5. إنشاء superuser
-python manage.py createsuperuser
+# Or production-like
+python -m waitress --port 8000 video_project.wsgi:application
+
+# Admin panel
+http://127.0.0.1:8000/admin/
 ```
 
 ---
 
-## 📊 هيكل قاعدة البيانات (اختياري - للمستقبل)
+## Testing Endpoints
 
-إذا أردت إضافة قاعدة بيانات للفيديوهات:
-```python
-# video_share/models.py
-from django.db import models
-from django.contrib.auth.models import User
-
-class Video(models.Model):
-    title = models.CharField(max_length=200, verbose_name="العنوان")
-    description = models.TextField(blank=True, verbose_name="الوصف")
-    file = models.FileField(upload_to='videos/', verbose_name="الملف")
-    thumbnail = models.ImageField(upload_to='thumbnails/', blank=True)
-    uploader = models.ForeignKey(User, on_delete=models.CASCADE)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    views = models.IntegerField(default=0)
-    likes = models.IntegerField(default=0)
-    
-    class Meta:
-        ordering = ['-uploaded_at']
-        verbose_name = "فيديو"
-        verbose_name_plural = "فيديوهات"
-    
-    def __str__(self):
-        return self.title
-
-class Like(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    video = models.ForeignKey(Video, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        unique_together = ('user', 'video')
-```
-
----
-
-## ✅ قائمة التحقق النهائية
-
-- [ ] تثبيت Python 3.11+
-- [ ] إنشاء البيئة الافتراضية
-- [ ] تثبيت المكتبات من requirements.txt
-- [ ] إنشاء مشروع Django
-- [ ] نسخ جميع الملفات
-- [ ] إنشاء مجلدات media و staticfiles
-- [ ] تطبيق migrations
-- [ ] اختبار رفع فيديو
-- [ ] اختبار التقليب بين الفيديوهات
-- [ ] اختبار المشاركة والتحميل
-
----
-
-## 🆘 حل المشاكل الشائعة
-
-### مشكلة: ModuleNotFoundError
 ```bash
-pip install -r requirements.txt
+# Home
+curl http://127.0.0.1:8000/
+
+# Reels
+curl http://127.0.0.1:8000/reels/
+
+# Like API (requires CSRF token)
+curl -X POST http://127.0.0.1:8000/api/like/1/ \
+  -H "X-CSRFToken: token"
 ```
 
-## ⚙️ ربط Tailwind مع Django
+---
 
-اتّبع الخطوات التالية لإضافة Tailwind CSS وبنائه إلى `staticfiles/css/tailwind.css`:
+## Production Deployment
 
-1. ثبّت Node.js (إذا لم يكن مثبتًا).
+Before deploying, check:
 
-2. من مجلد المشروع (`c:\Users\HP\video_project`) شغّل:
+- [ ] `DEBUG = False`
+- [ ] `SECRET_KEY` is strong
+- [ ] `ALLOWED_HOSTS` configured
+- [ ] Database configured
+- [ ] Static files collected
+- [ ] Migrations applied
+- [ ] Environment variables set
 
-```powershell
-# ثبّت الحزم المطلوبة
-npm install
+See **PRODUCTION_CHECKLIST.md** for full checklist.
 
-# بناء ملف CSS جاهز للإنتاج
-npm run build:css
+---
 
-# أو تشغيل وضع التطوير مع المراقبة
-npm run dev:css
+## Docker
 
-# بعد بناء CSS، اجمع الملفات الثابتة (اختياري للإنتاج)
-python manage.py collectstatic --noinput
+```bash
+# Build
+docker build -t video_project:latest .
+
+# Run with Compose
+docker-compose up -d
+
+# Migrations
+docker-compose exec web python manage.py migrate
+
+# Stop
+docker-compose down
 ```
 
-3. سيتكوّن الملف النهائي في: `staticfiles/css/tailwind.css` وسيتم ربطه تلقائيًا في القوالب عبر `{% static 'css/tailwind.css' %}`.
+---
 
-ملاحظات:
-- أثناء التطوير يمكنك تشغيل `npm run dev:css` لمشاهدة التغييرات مباشرة.
-- إذا كنت تستخدم بيئة استضافة أو CI/CD، أضف أمر `npm run build:css` قبل `collectstatic` في سكريبت النشر.
+## Common Issues
 
+### Video won't play
+- Check file format (MP4 recommended)
+- Verify upload succeeded
+- Check browser console
 
-### مشكلة: الفيديو لا يعمل
+### Like button not working
+- Check CSRF token
+- Verify JavaScript enabled
+- Check server logs
+
+### Database error
+```bash
+python manage.py migrate
+```
+
+---
+
+## Performance
+
+- CDN support ready
+- S3 integration example included
+- Database query optimization
+- Static file compression
+- Cache-friendly headers
+
+---
+
+## Support
+
+- Django docs: https://docs.djangoproject.com
+- Platform help: See DEPLOYMENT_GUIDE.md
+- Stack Overflow: Tag with `django`
+
+---
+
+## License
+
+MIT License - Use freely for personal or commercial projects
+
+---
+
+## Next Steps
+
+1. **Test locally** - Run the dev server
+2. **Review docs** - Read DEPLOYMENT_GUIDE.md
+3. **Push to Git** - `git push origin main`
+4. **Deploy** - Connect to Render/Railway
+5. **Monitor** - Check logs and metrics
+
+---
+
+**Ready to deploy?** → See **DEPLOYMENT_GUIDE.md**
+
+Built with Django 🚀
 - تحقق من مسار MEDIA_ROOT
 - تأكد من وجود مجلد media/videos
 
