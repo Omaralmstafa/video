@@ -1,0 +1,17 @@
+*.pyc
+__pycache__/
+*.sqlite3
+*.sqlite
+venv/
+env/
+.env
+*.log
+.DS_Store
+node_modules/
+staticfiles/
+media/
+db.sqlite3
+.vscode/
+*.egg-info/
+dist/
+build/
