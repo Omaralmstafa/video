@@ -1,1 +1,1 @@
-web: gunicorn video_project.wsgi:application --bind 0.0.0.0:$PORT
+web: python -m gunicorn video_project.wsgi:application --bind 0.0.0.0:$PORT
