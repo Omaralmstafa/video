@@ -1,0 +1,29 @@
+═══════════════════════════════════════════════════════
+  أوامر رفع المشروع إلى GitHub
+═══════════════════════════════════════════════════════
+
+1. إضافة جميع الملفات:
+   git add .
+
+2. إنشاء Commit:
+   git commit -m "Initial commit: Video sharing project with Django - Ready for Render deployment"
+
+3. تحديث Remote (إذا لزم الأمر):
+   git remote set-url origin https://github.com/Omaralmstafa/video.git
+
+4. تغيير Branch إلى main:
+   git branch -M main
+
+5. رفع المشروع:
+   git push -u origin main
+
+═══════════════════════════════════════════════════════
+  ملاحظات مهمة:
+═══════════════════════════════════════════════════════
+
+- عند طلب كلمة المرور، استخدم Personal Access Token
+- يمكنك الحصول على Token من: https://github.com/settings/tokens
+- اختر الصلاحية: repo (Full control)
+
+═══════════════════════════════════════════════════════
+

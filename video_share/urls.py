@@ -23,6 +23,9 @@ urlpatterns = [
     # إعجاب بالفيديو
     path('api/like/<int:video_id>/', views.like_video, name='like_video'),
     
+    # حذف فيديو
+    path('api/delete/<int:video_id>/', views.delete_video, name='delete_video'),
+    
     # رفع فيديو جديد
     path('upload/', views.upload_video, name='upload_video'),
 ]

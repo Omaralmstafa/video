@@ -112,30 +112,53 @@ def stream_video(request, video_id):
 
 
 def upload_video(request):
-    """رفع فيديو جديد إلى قاعدة البيانات"""
+    """رفع فيديو جديد أو عدة فيديوهات إلى قاعدة البيانات"""
     if request.method == 'POST':
-        title = request.POST.get('title', 'فيديو جديد')
-        description = request.POST.get('description', '')
-        video_file = request.FILES.get('video')
+        # دعم رفع متعدد
+        video_files = request.FILES.getlist('video')  # getlist للعديد من الملفات
         
-        if video_file:
-            video = Video.objects.create(
-                title=title,
-                description=description,
-                file=video_file,
-                is_published=True
-            )
-            
+        if not video_files:
+            return JsonResponse({
+                'success': False,
+                'message': 'لم يتم تحديد ملف فيديو'
+            }, status=400)
+        
+        uploaded_videos = []
+        errors = []
+        
+        for video_file in video_files:
+            try:
+                # استخدام اسم الملف كعنوان افتراضي
+                title = request.POST.get('title', '') or video_file.name.rsplit('.', 1)[0]
+                description = request.POST.get('description', '')
+                
+                video = Video.objects.create(
+                    title=title,
+                    description=description,
+                    file=video_file,
+                    is_published=True
+                )
+                
+                uploaded_videos.append({
+                    'id': video.id,
+                    'title': video.title,
+                    'url': video.get_url()
+                })
+            except Exception as e:
+                errors.append(f'خطأ في رفع {video_file.name}: {str(e)}')
+        
+        if uploaded_videos:
             return JsonResponse({
                 'success': True,
-                'message': 'تم رفع الفيديو بنجاح',
-                'video_id': video.id,
-                'video_url': video.get_url()
+                'message': f'تم رفع {len(uploaded_videos)} فيديو بنجاح',
+                'videos': uploaded_videos,
+                'errors': errors if errors else None
             })
         else:
             return JsonResponse({
                 'success': False,
-                'message': 'لم يتم تحديد ملف فيديو'
+                'message': 'فشل رفع جميع الفيديوهات',
+                'errors': errors
             }, status=400)
     
     return render(request, 'video_share/upload.html')
@@ -161,3 +184,49 @@ def like_video(request, video_id):
         })
     except Video.DoesNotExist:
         return JsonResponse({'error': 'الفيديو غير موجود'}, status=404)
+
+def delete_video(request, video_id):
+    """حذف فيديو"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        video = Video.objects.get(id=video_id)
+        video_title = video.title
+        
+        # حذف الملف من النظام
+        if video.file:
+            try:
+                file_path = video.file.path
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                # إذا فشل حذف الملف، نتابع حذف السجل
+                print(f"Warning: Could not delete file: {str(e)}")
+        
+        # حذف الصورة المصغرة إن وجدت
+        if video.thumbnail:
+            try:
+                thumbnail_path = video.thumbnail.path
+                if os.path.exists(thumbnail_path):
+                    os.remove(thumbnail_path)
+            except Exception as e:
+                print(f"Warning: Could not delete thumbnail: {str(e)}")
+        
+        # حذف السجل من قاعدة البيانات
+        video.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'تم حذف الفيديو "{video_title}" بنجاح'
+        })
+    except Video.DoesNotExist:
+        return JsonResponse({'error': 'الفيديو غير موجود'}, status=404)
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error deleting video: {error_details}")
+        return JsonResponse({
+            'success': False,
+            'error': f'حدث خطأ أثناء الحذف: {str(e)}'
+        }, status=500)

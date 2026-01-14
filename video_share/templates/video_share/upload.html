@@ -120,19 +120,52 @@
       display: none;
       margin-top: 20px;
       border-radius: 16px;
-      overflow: hidden;
+      overflow: visible;
       position: relative;
+    }
+
+    .preview-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .preview-item {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
       background: #000;
+      aspect-ratio: 9/16;
     }
 
-    .preview-container.show {
-      display: block;
-    }
-
-    .preview-video {
+    .preview-video-small {
       width: 100%;
-      max-height: 400px;
-      display: block;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .remove-file {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(255, 59, 48, 0.9);
+      color: #fff;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .remove-file:hover {
+      background: rgba(255, 59, 48, 1);
+      transform: scale(1.1);
     }
 
     .preview-overlay {
@@ -326,25 +359,21 @@
       <!-- منطقة الرفع -->
       <div class="upload-area" id="uploadArea">
         <div class="upload-icon">🎬</div>
-        <h3>اسحب الفيديو هنا</h3>
-        <p>أو انقر للاختيار من جهازك</p>
-        <div class="file-types">MP4, WebM, MOV • حتى 500 ميجا</div>
-        <input type="file" id="videoFile" name="video" accept="video/*" required>
+        <h3>اسحب الفيديوهات هنا</h3>
+        <p>أو انقر للاختيار من جهازك (يمكن اختيار عدة فيديوهات)</p>
+        <div class="file-types">MP4, WebM, MOV • حتى 500 ميجا لكل فيديو</div>
+        <input type="file" id="videoFile" name="video" accept="video/*" multiple required>
       </div>
 
-      <!-- معاينة الفيديو -->
-      <div class="preview-container" id="previewContainer">
-        <video class="preview-video" id="previewVideo" controls muted></video>
-        <div class="preview-overlay" id="previewOverlay">
-          <div class="file-name" id="fileName"></div>
-          <div class="file-details" id="fileDetails"></div>
-        </div>
-        <button type="button" class="change-video" id="changeVideo">تغيير الفيديو</button>
+      <!-- معاينة الفيديوهات -->
+      <div class="preview-container" id="previewContainer" style="display: none;">
+        <div id="previewList" class="preview-list"></div>
+        <button type="button" class="change-video" id="changeVideo">تغيير الفيديوهات</button>
       </div>
 
       <!-- زر الرفع -->
       <button type="submit" class="upload-btn" id="uploadBtn">
-        <span id="btnText">رفع الفيديو</span>
+        <span id="btnText">رفع الفيديوهات</span>
       </button>
 
       <!-- شريط التقدم -->
@@ -380,7 +409,7 @@
     const fileDetails = document.getElementById('fileDetails');
     const changeVideo = document.getElementById('changeVideo');
 
-    let selectedFile = null;
+    let selectedFiles = [];
 
     // النقر على منطقة الرفع
     uploadArea.addEventListener('click', () => videoFile.click());
@@ -399,14 +428,14 @@
       e.preventDefault();
       uploadArea.classList.remove('dragover');
       if (e.dataTransfer.files.length) {
-        handleFileSelect(e.dataTransfer.files[0]);
+        handleFilesSelect(Array.from(e.dataTransfer.files));
       }
     });
 
-    // اختيار الملف
+    // اختيار الملفات
     videoFile.addEventListener('change', (e) => {
       if (e.target.files.length) {
-        handleFileSelect(e.target.files[0]);
+        handleFilesSelect(Array.from(e.target.files));
       }
     });
 
@@ -415,35 +444,75 @@
       videoFile.click();
     });
 
-    function handleFileSelect(file) {
-      // التحقق من نوع الملف
-      if (!file.type.startsWith('video/')) {
-        showMessage('الرجاء اختيار ملف فيديو', 'error');
+    function handleFilesSelect(files) {
+      const validFiles = [];
+      const errors = [];
+
+      files.forEach(file => {
+        // التحقق من نوع الملف
+        if (!file.type.startsWith('video/')) {
+          errors.push(`${file.name}: ليس ملف فيديو`);
+          return;
+        }
+
+        // التحقق من حجم الملف (500 MB)
+        const maxSize = 500 * 1024 * 1024;
+        if (file.size > maxSize) {
+          errors.push(`${file.name}: الحجم أكبر من 500 ميجا`);
+          return;
+        }
+
+        validFiles.push(file);
+      });
+
+      if (errors.length > 0) {
+        showMessage('بعض الملفات غير صالحة:\n' + errors.join('\n'), 'error');
+      }
+
+      if (validFiles.length === 0) {
         return;
       }
 
-      // التحقق من حجم الملف (500 MB)
-      const maxSize = 500 * 1024 * 1024;
-      if (file.size > maxSize) {
-        showMessage('حجم الملف يجب أن يكون أقل من 500 ميجا', 'error');
-        return;
-      }
-
-      selectedFile = file;
-
-      // عرض معلومات الملف
-      const size = (file.size / (1024 * 1024)).toFixed(2);
-      fileName.textContent = file.name;
-      fileDetails.textContent = `${size} ميجا • ${file.type.split('/')[1].toUpperCase()}`;
-
-      // معاينة الفيديو
-      const url = URL.createObjectURL(file);
-      previewVideo.src = url;
-      previewContainer.classList.add('show');
+      selectedFiles = validFiles;
+      displayPreview();
       uploadArea.style.display = 'none';
-
-      // إخفاء أي رسائل سابقة
       message.classList.remove('show');
+    }
+
+    function displayPreview() {
+      const previewList = document.getElementById('previewList');
+      previewList.innerHTML = '';
+
+      selectedFiles.forEach((file, index) => {
+        const size = (file.size / (1024 * 1024)).toFixed(2);
+        const url = URL.createObjectURL(file);
+        
+        const previewItem = document.createElement('div');
+        previewItem.className = 'preview-item';
+        previewItem.innerHTML = `
+          <video class="preview-video-small" preload="metadata" muted>
+            <source src="${url}" type="${file.type}">
+          </video>
+          <div class="preview-overlay">
+            <div class="file-name">${file.name}</div>
+            <div class="file-details">${size} ميجا • ${file.type.split('/')[1].toUpperCase()}</div>
+          </div>
+          <button type="button" class="remove-file" onclick="removeFile(${index})">✕</button>
+        `;
+        previewList.appendChild(previewItem);
+      });
+
+      previewContainer.style.display = 'block';
+    }
+
+    function removeFile(index) {
+      selectedFiles.splice(index, 1);
+      if (selectedFiles.length === 0) {
+        previewContainer.style.display = 'none';
+        uploadArea.style.display = 'block';
+      } else {
+        displayPreview();
+      }
     }
 
     function showMessage(text, type) {
@@ -451,17 +520,19 @@
       message.className = `message ${type} show`;
     }
 
-    // رفع الفيديو
+    // رفع الفيديوهات
     uploadForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      if (!selectedFile) {
-        showMessage('الرجاء اختيار ملف فيديو', 'error');
+      if (selectedFiles.length === 0) {
+        showMessage('الرجاء اختيار ملف فيديو واحد على الأقل', 'error');
         return;
       }
 
       const formData = new FormData();
-      formData.append('video', selectedFile);
+      selectedFiles.forEach(file => {
+        formData.append('video', file);
+      });
 
       uploadBtn.disabled = true;
       btnText.innerHTML = '<div class="spinner"></div>';
@@ -483,11 +554,23 @@
         xhr.addEventListener('load', () => {
           if (xhr.status === 200) {
             const response = JSON.parse(xhr.responseText);
-            showMessage('✓ تم رفع الفيديو بنجاح!', 'success');
-            
-            setTimeout(() => {
-              window.location.href = '{% url "video_share:video_list" %}';
-            }, 1500);
+            if (response.success) {
+              const count = response.videos ? response.videos.length : selectedFiles.length;
+              showMessage(`✓ تم رفع ${count} فيديو بنجاح!`, 'success');
+              
+              if (response.errors && response.errors.length > 0) {
+                setTimeout(() => {
+                  showMessage('بعض الفيديوهات فشل رفعها:\n' + response.errors.join('\n'), 'error');
+                }, 2000);
+              }
+              
+              setTimeout(() => {
+                window.location.href = '{% url "video_share:video_list" %}';
+              }, 2000);
+            } else {
+              showMessage(response.message || 'حدث خطأ أثناء الرفع', 'error');
+              resetUploadButton();
+            }
           } else {
             showMessage('حدث خطأ أثناء الرفع', 'error');
             resetUploadButton();
@@ -521,7 +604,7 @@
 
     function resetUploadButton() {
       uploadBtn.disabled = false;
-      btnText.textContent = 'رفع الفيديو';
+      btnText.textContent = 'رفع الفيديوهات';
       progressContainer.classList.remove('show');
     }
   </script>
