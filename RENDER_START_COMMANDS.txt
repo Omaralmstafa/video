@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════════
+  Start Commands لـ Render (جرب بالترتيب)
+═══════════════════════════════════════════════════════
+
+الخيار 1 (الأبسط - موصى به):
+─────────────────────────────
+gunicorn video_project.wsgi:application
+
+الخيار 2 (مع python):
+──────────────────────
+python -m gunicorn video_project.wsgi:application
+
+الخيار 3 (مع python3):
+───────────────────────
+python3 -m gunicorn video_project.wsgi:application
+
+الخيار 4 (استخدام waitress):
+─────────────────────────────
+waitress-serve --port=$PORT video_project.wsgi:application
+
+الخيار 5 (مع bind صريح):
+─────────────────────────
+gunicorn video_project.wsgi:application --bind 0.0.0.0:$PORT
+
+═══════════════════════════════════════════════════════
+  ملاحظات مهمة:
+═══════════════════════════════════════════════════════
+
+1. Render يضيف $PORT تلقائياً، لا حاجة لكتابته في معظم الحالات
+2. Start Command يجب تحديده في Render Dashboard (ليس فقط Procfile)
+3. جرب الخيار 1 أولاً (الأبسط)
+4. إذا لم يعمل، جرب الخيار 4 (waitress)
+
+═══════════════════════════════════════════════════════
+

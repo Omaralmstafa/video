@@ -1,1 +1,1 @@
-web: python -m gunicorn video_project.wsgi:application --bind 0.0.0.0:$PORT
+web: waitress-serve --port=$PORT video_project.wsgi:application
