@@ -4,13 +4,11 @@
 
 import os
 from pathlib import Path
+from decouple import config
+import dj_database_url
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# SECURITY WARNING: keep the secret key used in production secret!
-import os
-from decouple import config
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-your-secret-key-here-change-in-production')
 
@@ -70,8 +68,6 @@ WSGI_APPLICATION = 'video_project.wsgi.application'
 
 
 # Database
-import dj_database_url
-
 # استخدام PostgreSQL إذا كان DATABASE_URL موجوداً، وإلا SQLite للتطوير
 DATABASES = {
     'default': dj_database_url.config(
